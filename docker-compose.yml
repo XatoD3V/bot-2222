@@ -1,0 +1,39 @@
+# Clúster de 3 servidores + balanceador, usando carpetas de TU laptop como almacenamiento.
+#  ./almacenamiento/compartido -> la ven los 3 servidores (mismos datos)
+#  ./almacenamiento/s1, s2, s3 -> cada servidor tiene su carpeta propia
+x-servidor: &servidor
+  image: python:3.12-slim
+  command: python /app/app.py
+  restart: unless-stopped
+
+services:
+  s1:
+    <<: *servidor
+    environment: { SERVER_NAME: servidor-1 }
+    volumes:
+      - ./app:/app:ro
+      - ./almacenamiento/compartido:/data/compartido
+      - ./almacenamiento/s1:/data/local
+  s2:
+    <<: *servidor
+    environment: { SERVER_NAME: servidor-2 }
+    volumes:
+      - ./app:/app:ro
+      - ./almacenamiento/compartido:/data/compartido
+      - ./almacenamiento/s2:/data/local
+  s3:
+    <<: *servidor
+    environment: { SERVER_NAME: servidor-3 }
+    volumes:
+      - ./app:/app:ro
+      - ./almacenamiento/compartido:/data/compartido
+      - ./almacenamiento/s3:/data/local
+
+  balanceador:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [s1, s2, s3]
+    restart: unless-stopped
